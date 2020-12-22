@@ -56,7 +56,7 @@ public class PQWithTree<E extends Comparable<E>> implements Queue<E> {
    }
 
    private void percolateDownTree(HeapNode<E> node) {
-      HeapNode<E> child = node.getLeft();
+      HeapNode<E> child = node != null ? node.getLeft() : node;
       while (child != null) {
          HeapNode<E> max = node;
          HeapNode<E> rightChild = node.getRight();
@@ -135,12 +135,10 @@ public class PQWithTree<E extends Comparable<E>> implements Queue<E> {
             last = lastParent.getLeft();
          } else {
             // only the left child exists
+            HeapNode<E> prevLast = getPreviousLastNode(last);
             delete = lastParent.getLeft();
-            delete.setParent(null);
-            lastParent = getPreviousLastNodeParent(last);
-            if (lastParent != null) {
-               last.getParent().setLeft(null);
-               last = lastParent.getRight();
+            if (prevLast != null) {
+               last = prevLast;
             } else {
                // the last level of the tree is empty -- move on to the previous level
                lastLevelFirst = last.getParent();
@@ -150,6 +148,8 @@ public class PQWithTree<E extends Comparable<E>> implements Queue<E> {
                }
                level--;
             }
+            lastParent.setLeft(null);
+            delete.setParent(null);
          }
          length--;
          return delete;
@@ -175,7 +175,7 @@ public class PQWithTree<E extends Comparable<E>> implements Queue<E> {
       return parent;
    }
 
-   private HeapNode<E> getPreviousLastNodeParent(HeapNode<E> node) {
+   private HeapNode<E> getPreviousLastNode(HeapNode<E> node) {
       HeapNode<E> parent = node.getParent();
       // going up the tree
       while (parent != null && parent.getLeft() == node) {
@@ -248,24 +248,56 @@ public class PQWithTree<E extends Comparable<E>> implements Queue<E> {
       HeapNode<E> lastParent = last.getParent();
       HeapNode<E> lastNode = last;
       HeapNode<E> rootNode = root;
-      root = last;
-      root.setLeft(rootNode.getLeft());
-      if (rootNode.getLeft() != null)
-         rootNode.getLeft().setParent(root);
-      root.setRight(rootNode.getRight());
-      if (rootNode.getRight() != null)
-         rootNode.getRight().setParent(root);
-      root.setParent(null);
-      rootNode.setLeft(null);
-      rootNode.setRight(null);
-      if (lastParent.getLeft() == lastNode) {
-         // left child
-         lastParent.setLeft(rootNode);
+      if (root == last) {
+         // one element
+         last = lastLevelFirst = root;
+         return;
+      } else if (root == lastParent) {
+         // 2 to 3 elements
+         if (last == root.getLeft()) {
+            // 2 elements
+            root = last;
+            root.setLeft(rootNode);
+            rootNode.setParent(root);
+            root.setParent(null);
+            rootNode.setLeft(null);
+         } else {
+            // 3
+            root = last;
+            root.setLeft(rootNode.getLeft());
+            rootNode.getLeft().setParent(root);
+            root.setRight(rootNode);
+            rootNode.setParent(root);
+            root.setParent(null);
+            rootNode.setLeft(null);
+            rootNode.setRight(null);
+         }
       } else {
-         lastParent.setRight(rootNode);
+         // level of 2 or more
+         root = last;
+         root.setLeft(rootNode.getLeft());
+         if (rootNode.getLeft() != null)
+            rootNode.getLeft().setParent(root);
+         root.setRight(rootNode.getRight());
+         if (rootNode.getRight() != null)
+            rootNode.getRight().setParent(root);
+         root.setParent(null);
+         rootNode.setLeft(null);
+         rootNode.setRight(null);
+         if (lastParent.getLeft() == lastNode) {
+            // left child
+            lastParent.setLeft(rootNode);
+         } else {
+            lastParent.setRight(rootNode);
+         }
+         rootNode.setParent(lastParent);
       }
-      rootNode.setParent(lastParent);
       last = rootNode;
+      // modify the last level first
+      if (lastNode == lastLevelFirst) {
+         lastLevelFirst = rootNode;
+      }
+
    }
 
 }
